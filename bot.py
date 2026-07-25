@@ -21,7 +21,7 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import KeyboardButton, ReplyKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -39,11 +39,12 @@ CHANNEL_ID = os.environ.get("CHANNEL_ID")  # можно не задавать н
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton(
+    keyboard = ReplyKeyboardMarkup(
+        [[KeyboardButton(
             "📌 Опубликовать объявление",
             web_app=WebAppInfo(url=WEBAPP_URL),
-        )]]
+        )]],
+        resize_keyboard=True,
     )
     await update.message.reply_text(
         "Привет! Здесь можно опубликовать объявление.\n\n"
@@ -124,6 +125,38 @@ class _HealthHandler(BaseHTTPRequestHandler):
     def do_HEAD(self):
         # UptimeRobot по умолчанию шлёт HEAD-запросы для проверки — обрабатываем и их
         self.send_response(200)
+        self.end_headers()
+
+    def log_message(self, *args):
+        pass  # не засоряем логи health-check запросами
+
+
+def start_health_server():
+    """Render (и подобные хостинги) держат сервис живым, пока он отвечает на HTTP.
+    Бот сам по себе HTTP не слушает (работает через polling), поэтому поднимаем
+    отдельный мини-сервер, который просто отвечает 200 OK на любой запрос."""
+    port = int(os.environ.get("PORT", 8000))
+    server = HTTPServer(("0.0.0.0", port), _HealthHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    log.info(f"Health-check сервер запущен на порту {port}")
+
+
+def main():
+    start_health_server()
+
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("skip", skip_photo))
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, on_web_app_data))
+    app.add_handler(MessageHandler(filters.PHOTO, on_photo))
+
+    log.info("Бот запущен")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
         self.end_headers()
 
     def log_message(self, *args):
