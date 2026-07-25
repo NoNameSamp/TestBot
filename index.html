@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Новое объявление</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#eee3c8;
+    --paper-dark:#e2d3ac;
+    --ink:#2b2620;
+    --ink-soft:#5c5240;
+    --pin:#b33a3a;
+    --sage:#6f7d5e;
+    --line:#c9b98a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(255,255,255,0.25), transparent 40%),
+      var(--paper);
+    background-image:
+      linear-gradient(var(--paper-dark) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-dark) 1px, transparent 1px);
+    background-size: 100% 100%, 28px 28px, 28px 28px;
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    padding:20px 14px 40px;
+  }
+  .board{
+    width:100%;
+    max-width:460px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:4px 2px 10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:6px;height:6px;border-radius:50%;
+    background:var(--sage);
+    display:inline-block;
+  }
+  h1{
+    font-family:'Special Elite',monospace;
+    font-weight:400;
+    font-size:26px;
+    line-height:1.25;
+    margin:0 0 4px;
+    letter-spacing:.01em;
+  }
+  .sub{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin:0 0 20px;
+  }
+  .note{
+    position:relative;
+    background:#fbf6e9;
+    border:1px solid var(--line);
+    padding:26px 20px 22px;
+    box-shadow:0 10px 22px -12px rgba(43,38,32,.35), 0 1px 0 rgba(255,255,255,.4) inset;
+    transform:rotate(-0.4deg);
+    clip-path: polygon(0% 1%,3% 0%,9% 1%,15% 0%,22% 1%,29% 0%,36% 1%,44% 0%,52% 1%,60% 0%,68% 1%,76% 0%,84% 1%,92% 0%,100% 1%,100% 96%,94% 100%,88% 97%,81% 100%,74% 97%,67% 100%,60% 97%,53% 100%,46% 97%,39% 100%,32% 97%,25% 100%,18% 97%,11% 100%,4% 97%,0% 100%);
+  }
+  .pin{
+    position:absolute;
+    top:-11px; left:50%;
+    transform:translateX(-50%);
+    width:20px;height:20px;
+    border-radius:50%;
+    background: radial-gradient(circle at 32% 30%, #e07a7a, var(--pin) 60%, #7d2323 100%);
+    box-shadow:0 3px 5px rgba(0,0,0,.35);
+  }
+  label{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 8px;
+  }
+  textarea{
+    width:100%;
+    min-height:140px;
+    resize:vertical;
+    border:none;
+    border-bottom:1px dashed var(--line);
+    background:transparent;
+    font-family:'Inter',sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    color:var(--ink);
+    padding:2px 2px 10px;
+    outline:none;
+  }
+  textarea::placeholder{color:#a89a78;}
+  .counter{
+    text-align:right;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  .counter.over{color:var(--pin);}
+  .field{margin-bottom:22px;}
+  .photo-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .photo-btn{
+    border:1px dashed var(--ink-soft);
+    background:transparent;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    font-weight:500;
+    padding:10px 14px;
+    border-radius:2px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .photo-btn svg{flex-shrink:0;}
+  .preview{
+    display:none;
+    margin-top:12px;
+    position:relative;
+    width:88px;
+  }
+  .preview img{
+    width:88px;height:88px;object-fit:cover;
+    border:1px solid var(--line);
+    display:block;
+    transform:rotate(1.5deg);
+    box-shadow:0 6px 12px -6px rgba(0,0,0,.4);
+  }
+  .preview button{
+    position:absolute;top:-8px;right:-8px;
+    width:22px;height:22px;border-radius:50%;
+    background:var(--pin);color:#fff;border:none;
+    font-size:13px;line-height:1;cursor:pointer;
+  }
+  .hint{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:10px;
+    line-height:1.5;
+  }
+  .stamp{
+    display:none;
+    margin-top:18px;
+    text-align:center;
+  }
+  .stamp span{
+    display:inline-block;
+    font-family:'Special Elite',monospace;
+    font-size:14px;
+    color:var(--sage);
+    border:2px solid var(--sage);
+    padding:5px 14px;
+    border-radius:3px;
+    transform:rotate(-4deg);
+    letter-spacing:.06em;
+  }
+</style>
+</head>
+<body>
+  <div class="board">
+    <div class="eyebrow">Доска объявлений</div>
+    <h1>Новое объявление</h1>
+    <p class="sub">Опишите, что предлагаете. Фото можно будет добавить следующим сообщением боту.</p>
+
+    <div class="note">
+      <div class="pin"></div>
+
+      <div class="field">
+        <label for="text">Текст объявления</label>
+        <textarea id="text" maxlength="1000" placeholder="Например: продаю велосипед, состояние хорошее, самовывоз..."></textarea>
+        <div class="counter" id="counter">0 / 1000</div>
+      </div>
+
+      <div class="field">
+        <label>Фото (необязательно)</label>
+        <div class="photo-row">
+          <button type="button" class="photo-btn" id="photoBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+            Прикрепить фото
+          </button>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" style="display:none">
+        <div class="preview" id="preview">
+          <img id="previewImg" src="" alt="">
+          <button type="button" id="removePhoto">×</button>
+        </div>
+        <p class="hint" id="photoHint" style="display:none">Само фото пришлите боту следующим сообщением после публикации текста — так оно дойдёт в исходном качестве.</p>
+      </div>
+
+      <div class="stamp" id="stamp"><span>Отправлено ✓</span></div>
+    </div>
+  </div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  tg?.ready();
+  tg?.expand();
+
+  const textEl = document.getElementById('text');
+  const counterEl = document.getElementById('counter');
+  const photoBtn = document.getElementById('photoBtn');
+  const photoInput = document.getElementById('photoInput');
+  const preview = document.getElementById('preview');
+  const previewImg = document.getElementById('previewImg');
+  const removePhoto = document.getElementById('removePhoto');
+  const photoHint = document.getElementById('photoHint');
+  const stamp = document.getElementById('stamp');
+
+  let hasPhoto = false;
+
+  function updateCounter(){
+    const len = textEl.value.length;
+    counterEl.textContent = `${len} / 1000`;
+    counterEl.classList.toggle('over', len > 950);
+    syncMainButton();
+  }
+
+  function syncMainButton(){
+    if(!tg) return;
+    const ready = textEl.value.trim().length > 0;
+    if(ready){
+      tg.MainButton.setText('Опубликовать');
+      tg.MainButton.show();
+      tg.MainButton.enable();
+    } else {
+      tg.MainButton.hide();
+    }
+  }
+
+  textEl.addEventListener('input', updateCounter);
+
+  photoBtn.addEventListener('click', () => photoInput.click());
+
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files[0];
+    if(!file) return;
+    hasPhoto = true;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      preview.style.display = 'block';
+      photoHint.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removePhoto.addEventListener('click', () => {
+    hasPhoto = false;
+    photoInput.value = '';
+    preview.style.display = 'none';
+    photoHint.style.display = 'none';
+  });
+
+  tg?.MainButton.onClick(() => {
+    const payload = {
+      text: textEl.value.trim(),
+      hasPhoto
+    };
+    tg.MainButton.hide();
+    stamp.style.display = 'block';
+    tg.sendData(JSON.stringify(payload));
+    setTimeout(() => tg.close(), 550);
+  });
+
+  updateCounter();
+</script>
+</body>
+</html>
