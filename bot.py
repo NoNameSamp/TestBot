@@ -121,6 +121,11 @@ class _HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"OK")
 
+    def do_HEAD(self):
+        # UptimeRobot по умолчанию шлёт HEAD-запросы для проверки — обрабатываем и их
+        self.send_response(200)
+        self.end_headers()
+
     def log_message(self, *args):
         pass  # не засоряем логи health-check запросами
 
