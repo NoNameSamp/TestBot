@@ -39,7 +39,7 @@ INTERVAL_SECONDS = int(os.environ.get("INTERVAL_SECONDS", 3 * 60 * 60))  # 3 ч�
 FIRST_RUN_DELAY = int(os.environ.get("FIRST_RUN_DELAY", 30))
 
 # Единственный пользователь, которому доступно админ-меню назначения именинника.
-ADMIN_ID = int(os.environ.get("ADMIN_ID", "6788511742", "6024223246"))
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "6788511742", 6024223246"))
 
 ADMIN_BUTTON_TEXT = "⚙️ Назначить именинника"
 ASK_ID, ASK_NAME = range(2)
