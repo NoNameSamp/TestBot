@@ -152,7 +152,7 @@ def start_health_server():
 def build_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [[KeyboardButton(BUTTON_TEXT)]],
-        resize_keyboard=True,
+        resize_keyboard=False,
         is_persistent=True,
     )
 
