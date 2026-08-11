@@ -32,7 +32,7 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 CHAT_ID = os.environ["CHAT_ID"]  # id группы, например -1001234567890
 
-DEFAULT_BIRTHDAY_NAME = os.environ.get("BIRTHDAY_NAME", "Вику")
+DEFAULT_BIRTHDAY_NAME = os.environ.get("BIRTHDAY_NAME", "Пользователя")
 # Текст кнопки теперь не завязан на имя — имя именинника можно менять "на лету"
 # через админ-меню, не пересоздавая клавиатуру у всех участников заново.
 BUTTON_TEXT = os.environ.get("BUTTON_TEXT", "🎉 Поздравить с Днём Рождения")
