@@ -290,9 +290,7 @@ async def safe_send_to_chat(context: ContextTypes.DEFAULT_TYPE, text: str, **kwa
 async def send_welcome(context: ContextTypes.DEFAULT_TYPE, chat_id):
     await context.bot.send_message(
         chat_id=chat_id,
-        text="Привет! Я бот-поздравлятор 🎉\n"
-        "Нажимайте на кнопку ниже, чтобы поздравить именинника, "
-        "а ещё я сам буду присылать поздравления каждые пару часов.",
+        text="Привет! Я бот-поздравлятор 🎉"n/
         reply_markup=build_keyboard(),
     )
 
