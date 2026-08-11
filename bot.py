@@ -417,10 +417,10 @@ async def toggle_button_visible(update: Update, context: ContextTypes.DEFAULT_TY
     set_button_visible(new_value)
     if new_value:
         status_text = "показана 👁 для всех."
-        chat_notice = "Кнопка поздравления снова доступна."
+        chat_notice = "Кнопка снова доступна."
     else:
         status_text = "скрыта 🙈 для всех (и в ЛС, и в чате)."
-        chat_notice = "Кнопка поздравления временно скрыта администратором."
+        chat_notice = "Кнопка временно скрыта администратором."
 
     await update.message.reply_text(
         f"Готово ✅ Кнопка теперь {status_text}", reply_markup=build_admin_keyboard()
