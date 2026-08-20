@@ -1,25 +1,17 @@
 services:
   - type: web
-    name: vika-birthday-bot
+    name: telegram-stalker-bot
     runtime: python
     plan: free
+    branch: main
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
-    healthCheckPath: /
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
       - key: BOT_TOKEN
         sync: false
-      - key: GEMINI_API_KEY
+      - key: API_ID
         sync: false
-      - key: CHAT_ID
+      - key: API_HASH
         sync: false
-      - key: BIRTHDAY_NAME
-        value: Вику
-      - key: BUTTON_TEXT
-        value: "🎉 Поздравить Вику с Днём Рождения"
-      - key: GEMINI_MODEL
-        value: gemini-2.5-flash
-      - key: INTERVAL_SECONDS
-        value: "10800"
+      - key: OWNER_ID
+        sync: false
