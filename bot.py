@@ -164,11 +164,11 @@ async def start_cmd(message: Message):
         [InlineKeyboardButton(text="📖 Инструкция", callback_data="help")]
     ])
     await message.answer(
-        "👁️ **Бот-сталкер** активирован.\n\n"
+        "<b>👁️ Бот-сталкер активирован.</b>\n\n"
         "Отслеживает всё: имя, юзернейм, фото, био, онлайн.\n"
         "📸 Делает скриншоты профиля при каждом изменении.\n"
         "🌐 Веб-панель для просмотра истории.\n\n"
-        "**Команды:**\n"
+        "<b>Команды:</b>\n"
         "/add @username — добавить цель\n"
         "/list — список целей\n"
         "/remove @username — удалить цель\n"
@@ -177,7 +177,7 @@ async def start_cmd(message: Message):
         "/screenshots @username — скриншоты профиля\n"
         "/clear_history @username — очистить историю\n"
         "/export @username — экспорт в JSON",
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=keyboard
     )
 
