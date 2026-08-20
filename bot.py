@@ -199,19 +199,27 @@ async def help_callback(callback):
 async def add_cmd(message: Message):
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("❌ Укажи юзернейм: `/add @username`", parse_mode="Markdown")
+        await message.answer("❌ Укажи юзернейм или ID: `/add @username` или `/add 123456789`", parse_mode="Markdown")
         return
-    username = args[1].replace('@', '')
+    
+    identifier = args[1].replace('@', '')
     try:
-        entity = await telethon_client.get_entity(username)
+        # Получаем пользователя по ID или юзернейму
+        entity = await telethon_client.get_entity(identifier)
         if not isinstance(entity, User):
             await message.answer("❌ Это не пользователь, а группа/канал.")
             return
-        full = await telethon_client.get_full_user(entity)
+        
+        # Получаем полную информацию (био и статус)
+        full = await telethon_client.get_full_entity(entity)
         bio = full.about or ""
+        
+        # Получаем хеш фото
         photo_hash = ""
         if entity.photo:
             photo_hash = str(entity.photo.photo_id) if hasattr(entity.photo, 'photo_id') else ""
+        
+        # Добавляем цель в БД
         add_target(
             entity.id,
             entity.username or "",
@@ -221,6 +229,8 @@ async def add_cmd(message: Message):
             bio,
             entity.bot or False
         )
+        
+        # Делаем первый скриншот профиля
         if entity.photo:
             try:
                 photos = await telethon_client(GetUserPhotosRequest(entity.id, offset=0, max_id=0, limit=1))
@@ -230,16 +240,22 @@ async def add_cmd(message: Message):
                     add_screenshot(entity.id, photo_url)
             except:
                 pass
+        
         await message.answer(
-            f"✅ **@{username}** добавлен в список отслеживания.\n"
+            f"✅ **Пользователь добавлен** в список отслеживания.\n"
             f"🆔 ID: `{entity.id}`\n"
+            f"👤 Имя: {entity.first_name or 'Без имени'}\n"
+            f"🔖 Юзернейм: @{entity.username or 'нет'}\n"
             f"📸 Сделан скриншот профиля",
             parse_mode="Markdown"
         )
+        
+        # Уведомление владельцу
         await bot.send_message(
             OWNER_ID,
-            f"🎯 Новая цель: @{username} (ID: {entity.id})\nДобавил: @{message.from_user.username}"
+            f"🎯 Новая цель: @{entity.username or entity.first_name} (ID: {entity.id})\nДобавил: @{message.from_user.username}"
         )
+        
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
