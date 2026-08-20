@@ -9,7 +9,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from telethon import TelegramClient
 from telethon.tl.functions.photos import GetUserPhotosRequest
-from telethon.tl.functions.users import GetFullUserRequest  # <-- ДОБАВИТЬ
+from telethon.tl.functions.users import GetFullUserRequest # <-- ДОБАВИТЬ
 from telethon.tl.types import User
 from aiohttp import web
 
@@ -216,7 +216,7 @@ async def add_cmd(message: Message):
             await message.answer("❌ Это не пользователь, а группа/канал.")
             return
         
-        # Получаем полную информацию (био) через get_full_user
+        # Получаем био через GetFullUserRequest
         try:
             full_user = await telethon_client(GetFullUserRequest(entity.id))
             bio = full_user.full_user.about or ""
@@ -333,10 +333,22 @@ async def stats_cmd(message: Message):
     if len(args) < 2:
         await message.answer("❌ Укажи юзернейм: `/stats @username`", parse_mode="Markdown")
         return
+    
     username = args[1].replace('@', '')
     try:
+        # Получаем пользователя
         entity = await telethon_client.get_entity(username)
-        full = await telethon_client.get_full_user(entity)
+        
+        # Получаем полную информацию через GetFullUserRequest
+        try:
+            full_user = await telethon_client(GetFullUserRequest(entity.id))
+            bio = full_user.full_user.about or ""
+        except:
+            bio = "Недоступно"
+        
+        # Проверяем онлайн
+        is_online = await check_online(entity.id)
+        
         text = f"📊 **Статистика @{username}:**\n\n"
         text += f"🆔 ID: `{entity.id}`\n"
         text += f"👤 Имя: {entity.first_name or '—'}\n"
@@ -344,12 +356,16 @@ async def stats_cmd(message: Message):
         text += f"🔖 Юзернейм: @{entity.username or '—'}\n"
         text += f"📱 Телефон: {getattr(entity, 'phone', '—')}\n"
         text += f"🤖 Бот: {'Да' if entity.bot else 'Нет'}\n"
-        text += f"📝 Био: {full.about or '—'}\n"
+        text += f"📝 Био: {bio[:200] or '—'}\n"
         text += f"🖼️ Фото: {'Есть' if entity.photo else 'Нет'}\n"
-        text += f"🟢 Онлайн: {'Да' if await check_online(entity.id) else 'Нет'}\n"
-        history_count = len(get_history(entity.id))
-        text += f"📜 Изменений: {history_count}\n"
+        text += f"🟢 Онлайн: {'Да' if is_online else 'Нет'}\n"
+        
+        # Количество изменений в истории
+        history = get_history(entity.id)
+        text += f"📜 Изменений: {len(history)}\n"
+        
         await message.answer(text[:4000], parse_mode="Markdown")
+        
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
@@ -618,33 +634,49 @@ async def stalker_loop():
             for user_id, username, first_name, last_name, saved_photo_hash, saved_bio, _ in targets:
                 try:
                     entity = await telethon_client.get_entity(user_id)
-                    full = await telethon_client.get_full_user(entity)
+                    
+                    # Получаем био через GetFullUserRequest
+                    try:
+                        full_user = await telethon_client(GetFullUserRequest(user_id))
+                        new_bio = full_user.full_user.about or ""
+                    except:
+                        new_bio = ""
+                    
                     changes = []
                     photo_changed = False
+                    
+                    # Проверка юзернейма
                     new_username = entity.username or ""
                     if new_username != username:
                         changes.append(('username', username, new_username))
                         log_change(user_id, 'username', username, new_username)
                         await bot.send_message(OWNER_ID, f"🔄 @{username} сменил юзернейм на @{new_username}")
                         photo_changed = True
+                    
+                    # Проверка имени
                     new_first = entity.first_name or ""
                     if new_first != first_name:
                         changes.append(('first_name', first_name, new_first))
                         log_change(user_id, 'first_name', first_name, new_first)
                         await bot.send_message(OWNER_ID, f"🔄 {first_name} сменил имя на {new_first}")
                         photo_changed = True
-                    new_bio = full.about or ""
+                    
+                    # Проверка био
                     if new_bio != saved_bio:
                         changes.append(('bio', saved_bio, new_bio))
                         log_change(user_id, 'bio', saved_bio, new_bio)
                         await bot.send_message(OWNER_ID, f"📝 {first_name} изменил био")
                         photo_changed = True
+                    
+                    # Проверка фото
                     photo_hash = str(entity.photo) if entity.photo else ""
                     if photo_hash != saved_photo_hash:
                         changes.append(('photo', saved_photo_hash, photo_hash))
                         log_change(user_id, 'photo', saved_photo_hash, photo_hash)
                         await bot.send_message(OWNER_ID, f"🖼️ {first_name} сменил аватарку")
                         photo_changed = True
+                        
+                        # Делаем скриншот нового фото
                         try:
                             photos = await telethon_client(GetUserPhotosRequest(user_id, offset=0, max_id=0, limit=1))
                             if photos.count > 0:
@@ -653,6 +685,8 @@ async def stalker_loop():
                                 add_screenshot(user_id, photo_url)
                         except:
                             pass
+                    
+                    # Если есть изменения — обновляем БД
                     if changes or photo_changed:
                         conn = sqlite3.connect(DB_PATH)
                         cur = conn.cursor()
@@ -666,10 +700,13 @@ async def stalker_loop():
                         conn.commit()
                         conn.close()
                         update_last_seen(user_id)
+                        
                 except Exception as e:
                     logger.error(f"Ошибка при проверке {user_id}: {e}")
+                    
         except Exception as e:
             logger.error(f"Ошибка в стalking-цикле: {e}")
+            
         await asyncio.sleep(10)
 
 async def main():
