@@ -659,6 +659,11 @@ async def main():
     logger.info(f"🌐 Веб-панель запущена на порту {WEB_PORT}")
     asyncio.create_task(stalker_loop())
     logger.info("🤖 Бот запущен")
+    
+    # Удаляем вебхук перед запуском polling
+    await bot.delete_webhook()
+    logger.info("✅ Webhook удалён")
+    
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
