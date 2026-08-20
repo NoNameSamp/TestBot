@@ -9,6 +9,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from telethon import TelegramClient
 from telethon.tl.functions.photos import GetUserPhotosRequest
+from telethon.tl.functions.users import GetFullUserRequest  # <-- ДОБАВИТЬ
 from telethon.tl.types import User
 from aiohttp import web
 
@@ -204,7 +205,7 @@ async def add_cmd(message: Message):
     
     identifier = args[1].replace('@', '')
     try:
-        # Пытаемся получить пользователя по юзернейму или ID
+        # Получаем пользователя
         try:
             user_id = int(identifier)
             entity = await telethon_client.get_entity(user_id)
@@ -215,10 +216,10 @@ async def add_cmd(message: Message):
             await message.answer("❌ Это не пользователь, а группа/канал.")
             return
         
-        # Получаем полную информацию о пользователе (био)
+        # Получаем полную информацию (био) через get_full_user
         try:
-            full = await telethon_client.get_entity(entity.id)
-            bio = getattr(full, 'about', '') or getattr(full, 'bio', '') or ""
+            full_user = await telethon_client(GetFullUserRequest(entity.id))
+            bio = full_user.full_user.about or ""
         except:
             bio = ""
         
@@ -254,6 +255,7 @@ async def add_cmd(message: Message):
             f"🆔 ID: `{entity.id}`\n"
             f"👤 Имя: {entity.first_name or 'Без имени'}\n"
             f"🔖 Юзернейм: @{entity.username or 'нет'}\n"
+            f"📝 Био: {bio[:50] or 'нет'}\n"
             f"📸 Сделан скриншот профиля",
             parse_mode="Markdown"
         )
