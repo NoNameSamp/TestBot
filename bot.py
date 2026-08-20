@@ -204,22 +204,26 @@ async def add_cmd(message: Message):
     
     identifier = args[1].replace('@', '')
     try:
-        # Получаем пользователя по ID или юзернейму
-        entity = await telethon_client.get_entity(identifier)
+        # Пытаемся преобразовать в число (если это ID)
+        try:
+            user_id = int(identifier)
+            entity = await telethon_client.get_entity(user_id)
+        except ValueError:
+            # Если не число — ищем по юзернейму
+            entity = await telethon_client.get_entity(identifier)
+        
         if not isinstance(entity, User):
             await message.answer("❌ Это не пользователь, а группа/канал.")
             return
         
-        # Получаем полную информацию (био и статус)
+        # Получаем полную информацию
         full = await telethon_client.get_full_entity(entity)
         bio = full.about or ""
         
-        # Получаем хеш фото
         photo_hash = ""
         if entity.photo:
             photo_hash = str(entity.photo.photo_id) if hasattr(entity.photo, 'photo_id') else ""
         
-        # Добавляем цель в БД
         add_target(
             entity.id,
             entity.username or "",
@@ -230,7 +234,6 @@ async def add_cmd(message: Message):
             entity.bot or False
         )
         
-        # Делаем первый скриншот профиля
         if entity.photo:
             try:
                 photos = await telethon_client(GetUserPhotosRequest(entity.id, offset=0, max_id=0, limit=1))
@@ -250,12 +253,13 @@ async def add_cmd(message: Message):
             parse_mode="Markdown"
         )
         
-        # Уведомление владельцу
         await bot.send_message(
             OWNER_ID,
             f"🎯 Новая цель: @{entity.username or entity.first_name} (ID: {entity.id})\nДобавил: @{message.from_user.username}"
         )
         
+    except ValueError:
+        await message.answer("❌ Неверный ID. Используй цифры без пробелов: `/add 123456789`", parse_mode="Markdown")
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
