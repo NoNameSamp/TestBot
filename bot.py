@@ -298,6 +298,11 @@ async def add_cmd(message: Message):
             await message.answer("❌ Это не пользователь, а группа/канал.")
             return
         
+        # ⚠️ ЕДИНСТВЕННОЕ ИЗМЕНЕНИЕ: запрет на добавление владельца
+        if entity.id == OWNER_ID:
+            await message.answer("❌ Нельзя добавить владельца бота в отслеживание.")
+            return
+        
         try:
             full_user = await telethon_client(GetFullUserRequest(entity.id))
             bio = full_user.full_user.about or ""
