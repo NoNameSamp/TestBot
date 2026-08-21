@@ -13,6 +13,7 @@ from telethon.tl.functions.photos import GetUserPhotosRequest
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.types import User
 from aiohttp import web
+from web_app import setup_web_app
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1005,7 +1006,9 @@ async def main():
     await telethon_client.start(bot_token=BOT_TOKEN)
     logger.info("✅ Telethon подключен через бота")
     
-    web_app = setup_web()
+    # Создаём веб-приложение через web_app.py
+    from web_app import setup_web_app
+    web_app = setup_web_app(telethon_client)
     runner = web.AppRunner(web_app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', WEB_PORT)
@@ -1018,6 +1021,5 @@ async def main():
     logger.info("🤖 Бот запущен")
     await bot.delete_webhook()
     await dp.start_polling(bot)
-
 if __name__ == "__main__":
     asyncio.run(main())
