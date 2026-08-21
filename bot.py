@@ -209,21 +209,19 @@ def get_last_report(user_id):
     return row
 
 async def download_photo(user_id):
+async def download_photo(user_id):
     """Скачивает фото профиля и сохраняет в файл"""
     try:
         photos = await telethon_client(GetUserPhotosRequest(user_id, offset=0, max_id=0, limit=1))
-        if photos.count > 0:
+        if photos and len(photos.photos) > 0:
             photo = photos.photos[0]
-            # Создаём папку для скриншотов если её нет
             os.makedirs('screenshots', exist_ok=True)
-            
-            # Скачиваем фото
             file_path = f"screenshots/{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             await telethon_client.download_media(photo, file=file_path)
-            
-            # Сохраняем путь в БД
             add_screenshot(user_id, file_path)
             return file_path
+        else:
+            logger.info(f"Нет фото для пользователя {user_id}")
     except Exception as e:
         logger.error(f"Ошибка при скачивании фото для {user_id}: {e}")
     return None
