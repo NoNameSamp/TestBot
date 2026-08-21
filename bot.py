@@ -210,18 +210,31 @@ def get_last_report(user_id):
 async def download_photo(user_id):
     """Скачивает фото профиля и сохраняет в файл"""
     try:
+        # Получаем фото пользователя
         photos = await telethon_client(GetUserPhotosRequest(user_id, offset=0, max_id=0, limit=1))
         if photos and len(photos.photos) > 0:
             photo = photos.photos[0]
+            
+            # Создаём папку если её нет
             os.makedirs('screenshots', exist_ok=True)
+            
+            # Формируем путь к файлу
             file_path = f"screenshots/{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+            
+            # Скачиваем фото
             await telethon_client.download_media(photo, file=file_path)
-            add_screenshot(user_id, file_path)
-            return file_path
+            
+            # Проверяем, что файл создался
+            if os.path.exists(file_path):
+                add_screenshot(user_id, file_path)
+                logger.info(f"✅ Фото сохранено: {file_path}")
+                return file_path
+            else:
+                logger.error(f"❌ Файл не создался: {file_path}")
         else:
-            logger.info(f"Нет фото для пользователя {user_id}")
+            logger.info(f"ℹ️ Нет фото для пользователя {user_id}")
     except Exception as e:
-        logger.error(f"Ошибка при скачивании фото для {user_id}: {e}")
+        logger.error(f"❌ Ошибка при скачивании фото для {user_id}: {e}")
     return None
 @dp.message(Command("start"))
 async def start_cmd(message: Message):
@@ -654,12 +667,24 @@ async def check_online(user_id):
     try:
         entity = await telethon_client.get_entity(user_id)
         full = await telethon_client.get_full_user(entity)
-        if full.status:
+        
+        if full and full.status:
             status_type = type(full.status).__name__
-            if status_type == 'UserStatusOnline' or status_type == 'UserStatusRecently':
+            logger.info(f"Статус пользователя {user_id}: {status_type}")
+            
+            if status_type == 'UserStatusOnline':
                 return True
+            elif status_type == 'UserStatusRecently':
+                return True
+            elif status_type == 'UserStatusLastWeek':
+                return False
+            elif status_type == 'UserStatusLastMonth':
+                return False
+            else:
+                return False
         return False
-    except:
+    except Exception as e:
+        logger.error(f"Ошибка проверки онлайн для {user_id}: {e}")
         return False
 
 async def report_loop():
@@ -702,19 +727,25 @@ async def stalker_loop():
         try:
             targets = get_targets()
             logger.info(f"🔍 Проверка {len(targets)} целей...")
+            
             for user_id, username, first_name, last_name, saved_photo_hash, saved_bio, _, _ in targets:
                 try:
+                    # Получаем актуальные данные
                     entity = await telethon_client.get_entity(user_id)
                     
+                    # Получаем био
                     try:
                         full_user = await telethon_client(GetFullUserRequest(user_id))
                         new_bio = full_user.full_user.about or ""
-                    except:
-                        new_bio = ""
+                    except Exception as e:
+                        logger.error(f"Ошибка получения био для {user_id}: {e}")
+                        new_bio = saved_bio  # оставляем старое
                     
+                    # Проверяем изменения
                     changes = []
                     photo_changed = False
                     
+                    # Проверка юзернейма
                     new_username = entity.username or ""
                     if new_username != username:
                         changes.append(('username', username, new_username))
@@ -722,6 +753,7 @@ async def stalker_loop():
                         await bot.send_message(OWNER_ID, f"🔄 @{username} сменил юзернейм на @{new_username}")
                         photo_changed = True
                     
+                    # Проверка имени
                     new_first = entity.first_name or ""
                     if new_first != first_name:
                         changes.append(('first_name', first_name, new_first))
@@ -729,20 +761,25 @@ async def stalker_loop():
                         await bot.send_message(OWNER_ID, f"🔄 {first_name} сменил имя на {new_first}")
                         photo_changed = True
                     
+                    # Проверка био - ВАЖНО!
                     if new_bio != saved_bio:
                         changes.append(('bio', saved_bio, new_bio))
                         log_change(user_id, 'bio', saved_bio, new_bio)
-                        await bot.send_message(OWNER_ID, f"📝 {first_name} изменил био")
+                        await bot.send_message(OWNER_ID, f"📝 {first_name} изменил био: {new_bio[:50]}...")
                         photo_changed = True
                     
+                    # Проверка фото
                     photo_hash = str(entity.photo) if entity.photo else ""
                     if photo_hash != saved_photo_hash:
                         changes.append(('photo', saved_photo_hash, photo_hash))
                         log_change(user_id, 'photo', saved_photo_hash, photo_hash)
                         await bot.send_message(OWNER_ID, f"🖼️ {first_name} сменил аватарку")
                         photo_changed = True
+                        
+                        # Скачиваем новое фото
                         await download_photo(user_id)
                     
+                    # Если есть изменения — обновляем БД
                     if changes or photo_changed:
                         conn = sqlite3.connect(DB_PATH)
                         cur = conn.cursor()
@@ -756,14 +793,15 @@ async def stalker_loop():
                         conn.commit()
                         conn.close()
                         update_last_seen(user_id)
+                        logger.info(f"✅ Обновлены данные для {user_id}: {len(changes)} изменений")
                         
                 except Exception as e:
-                    logger.error(f"Ошибка при проверке {user_id}: {e}")
+                    logger.error(f"❌ Ошибка при проверке {user_id}: {e}")
                     
         except Exception as e:
-            logger.error(f"Ошибка в стalking-цикле: {e}")
+            logger.error(f"❌ Ошибка в stalker-цикле: {e}")
             
-        await asyncio.sleep(10)
+        await asyncio.sleep(30)  # Проверка каждые 30 секунд
 async def web_index(request):
     """Главная страница веб-панели"""
     targets = get_targets()
@@ -902,61 +940,65 @@ async def web_index(request):
 
 async def web_api_targets(request):
     """API для получения списка целей"""
-    targets = get_targets()
+    conn = get_db_connection()
+    targets = conn.execute('''
+        SELECT user_id, username, first_name, last_name, photo_hash, bio, last_seen, added_at
+        FROM targets ORDER BY added_at DESC
+    ''').fetchall()
+    conn.close()
+    
     result = []
-    for user_id, username, first_name, last_name, photo_hash, bio, last_seen, last_report in targets:
+    online_count = 0
+    
+    for target in targets:
+        # Проверяем онлайн
         is_online = False
         try:
-            is_online = await check_online(user_id)
+            # Вызываем функцию проверки из bot.py
+            from bot import check_online
+            is_online = await check_online(target['user_id'])
+            if is_online:
+                online_count += 1
         except:
             pass
         
+        # Ищем аватарку
         avatar = None
         if os.path.exists('screenshots'):
-            for file in os.listdir('screenshots'):
-                if file.startswith(str(user_id)):
-                    avatar = f"/static/{file}"
-                    break
+            # Ищем самый свежий скриншот для этого пользователя
+            screenshots_dir = 'screenshots'
+            user_files = [f for f in os.listdir(screenshots_dir) if f.startswith(str(target['user_id']))]
+            if user_files:
+                # Сортируем по времени создания (берём самый новый)
+                user_files.sort(reverse=True)
+                avatar = f"/static/{user_files[0]}"
         
         result.append({
-            'user_id': user_id,
-            'username': username,
-            'first_name': first_name,
-            'last_name': last_name,
-            'bio': bio or '',
+            'user_id': target['user_id'],
+            'username': target['username'],
+            'first_name': target['first_name'],
+            'last_name': target['last_name'],
+            'bio': target['bio'] or '',
             'avatar': avatar,
             'online': is_online,
-            'last_seen': last_seen,
-            'last_report': last_report
+            'last_seen': target['last_seen'],
+            'added_at': target['added_at']
         })
     
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    total_changes = cur.execute('SELECT COUNT(*) FROM history').fetchone()[0]
-    total_screenshots = cur.execute('SELECT COUNT(*) FROM screenshots').fetchone()[0]
+    conn = get_db_connection()
+    total_changes = conn.execute('SELECT COUNT(*) FROM history').fetchone()[0]
+    total_screenshots = conn.execute('SELECT COUNT(*) FROM screenshots').fetchone()[0]
     conn.close()
     
     return web.json_response({
         'targets': result,
         'stats': {
             'total_targets': len(result),
-            'online_targets': sum(1 for t in result if t['online']),
+            'online_targets': online_count,
             'total_changes': total_changes,
             'total_screenshots': total_screenshots
         }
     })
-
-def setup_web():
-    """Настройка веб-приложения"""
-    app = web.Application()
-    app.router.add_get('/', web_index)
-    app.router.add_get('/api/targets', web_api_targets)
-    
-    # Статические файлы
-    if os.path.exists('screenshots'):
-        app.router.add_static('/static', 'screenshots')
-    
-    return app
 
 async def main():
     init_db()
